@@ -1,7 +1,5 @@
 ---
-title: 'Business Statistics Assessment IB94X0 2020-2021 #1'
-author: '2095515'
-date: "24/1/2021"
+title: 'Business Statistics'
 output: 
    html_document:
     toc: true
