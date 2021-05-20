@@ -1,0 +1,460 @@
+---
+title: 'Business Statistics Assessment IB94X0 2020-2021 #1'
+author: '2095515'
+date: "24/1/2021"
+output: 
+   html_document:
+    toc: true
+    toc_depth: 3 
+editor_options: 
+  chunk_output_type: inline
+---
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+#install.packages("ggpubr")
+#install.packages('gridExtra')
+library(gridExtra) #for grid.a
+library(ggpubr) # for ggarrange() 
+library(tidyverse)
+library(emmeans) # for emmeans() and pairs()
+options(width=100)
+```
+
+---
+```{r}
+salesdata <- read_csv("sales_data.csv") 
+salesdata
+```
+
+Variable       | Description
+-------------- | --------------------------------------
+Outlet_ID      | Outlet unique identifier
+outlettype     | Three different types of store that operate
+sales_1        | The sales in each store for the last full reporting period prior trial
+sales_2        | The sales in each store for the first full reporting period after trial
+intrial        | "TRUE"= in trial, "FALSE"= not in trial
+staff_turnover | The proportion of staff working at each respective outlets that left during the period data covers
+
+---
+
+## Data Transformation
+We set 'intrial' and 'outlettype' variables as factors since we are dealing with categorical variables.
+```{r}
+salesdata$intrial <- as.factor(salesdata$intrial)
+salesdata$outlettype <- as.factor(salesdata$outlettype)
+```
+
+We then add new columns each to find the sales difference between sales_2 and sales_1 in GBP, as well as for the rate of change in sales.
+```{r}
+salesdata <- mutate(salesdata, sales_diff_GBP = sales_2-sales_1, sales_diff_percentage = (sales_2-sales_1)*100/sales_1)
+summary(salesdata)
+salesdata %>% group_by(intrial) %>% summarise(frequency=n(), mean_sales1=mean(sales_1), mean_sales2=mean(sales_2))
+salesdata %>% group_by(intrial) %>% summarise(frequency=n(), mean_diff_GBP=mean(sales_diff_GBP), mean_diff_percentage=mean(sales_diff_percentage))
+```
+---
+
+
+## Question 1: Section 1
+
+A large retailer conducted a trial of a new store layout and signage design. The trial was implemented at random to approximately half of stores under their management. These stores consist of three outlet types. These are: city centre convenience, community convenience and superstore. 
+
+Stores that were selected at random to implement the new layout and design were represented as `TRUE`, otherwise the stores are represented as `FALSE`.
+
+To measure the impact of redesigning (`intrial: TRUE or FALSE`), we performed two measurement. We first represent the sales difference in GBP and followed by representing them in terms of percentage (%).
+
+For sales difference in GBP, the average sales in stores that did the redesign is GBP 426,892.81 95% CI [327304-526482]. The average in that did not perform the redesign is GBP 18,088.69 95% CI [-78951-115128]. This means that stores that did the redesign, had an increase of GBP 408,804, 95% CI [269755-547853]. This increase is significant $t(483) = 5.73$, $p<0.0001$.
+
+Similarly, for sales difference in percentage, the average sales in stores with redesign is 1.42% 95% CI[0.85-2.0] percent. The average sales in non-redesign stores is 0.10% 95% CI [-0.4-0.7] percent. Therefore, stores that did the redesign gain an increase of 1.32% 95% CI [0.5-2.1] average sales more than stores that did not perform the redesign. This is also a significant increase $t(487)=3.25$, $p=0.001$.
+
+In determining which measures to choose, we may initially look at the the p-value. By just looking at the p-value (p<0.0001 and p=0.02), we can see that there is more significant in sales difference in GBP measures as compared to percentage. However, using this measure may not be accurate as each outlet type has different business scales as per Figure 1 and Figure 2 below. In this manner, the sales difference in percentage would be a better measure.
+
+ 
+![](compiled_histograms.png)
+
+Figure 1: Overall, stores that perform the redesign is relatively better than.
+
+![](othistogram.png)
+
+Figure 2
+
+---
+
+
+
+## Question 2: Section 1
+Since we have decided to represent our result in percentage (%), we now consider controlling for outlets in trial `intrial` and their outlet type `outlettype`. We can identify see whether this model had any impact on the sales difference in percentage measures.
+
+The effect of the outlet type on sales difference in percentage differs significantly across intrial stores, $F(2,534)=57.9$, $p<.0001$. As per Figure 3 illustrated below, it would seem that outlet type does not have a significant impact on stores that did not perform the redesign (`FALSE intrial`). This means, when stores were not redesigned, it does not matter which type of outlet it was, there is no significant effect on sales difference in percentage.
+
+In the contrary, if stores were redesign (TRUE intrial) there are different effects for different types of stores. The figure also shows that, community convenience stores and superstore stores that did the redesign shows a significant increase in sales difference in percentage of 3.66% 95% CI[3.00-4.32] and 3.73% 95% CI[2.69-4.78] respectively. Unfortunately, the same cannot be said for city centre convenience store which shows a significant decrease in sales difference in percentage by 4.47% 95% CI[-5.387--3.586]. This can also be illustrated in Figure 3:
+
+![](ot.png)
+
+Figure 3
+
+
+We then plot another model by adding the staff turnover rate as another controlling variable and see the effects. Based on Figure 4 illustrated below, adding staff turnover rate does not significantly improve the model $F(1,533)=0.8591$, $p=0.35$. 
+
+![](staff_turnover.png)
+
+Figure 4
+
+---
+
+## Question 1: Section 2
+
+
+### Sales Difference in GBP
+#### Plotting The Histogram
+```{r}
+othistogram_GBP<-ggplot(salesdata, aes(x=sales_diff_GBP, fill=outlettype)) + geom_histogram(binwidth = 200000, alpha=0.5) + labs(x="Sales Difference Between Sales 1 and Sales 2 in GBP", y="Frequency", fill="Outlet Type", title = "Sales Difference Prior and After Store Trial") + geom_vline(data = salesdata, mapping = aes(xintercept = mean(sales_diff_GBP)), col="purple")
+othistogram_GBP
+```
+
+```{r}
+ggplot(salesdata, aes(x=sales_diff_GBP, fill=intrial)) + geom_histogram(binwidth = 200000) + labs(x="Sales Difference Between Sales 1 and Sales 2 in GBP", y="Frequency", fill="In Trial", title = "Sales Difference Prior and After Store Trial") + geom_vline(data = salesdata, mapping = aes(xintercept = mean(sales_diff_GBP)), col="purple")
+```
+
+```{r}
+sales_summary_GBP<- salesdata %>% group_by(intrial) %>% summarise(frequency=n(),mean_diff_GBP=mean(sales_diff_GBP),sd_diff_GBP=sd(sales_diff_GBP))
+sales_summary_GBP
+sales_summary1<- salesdata %>% summarise(mean_diff_GBP=mean(sales_diff_GBP),sd_diff_GBP=sd(sales_diff_GBP))
+sales_summary1
+sales_summary_mean1<- sales_summary1$mean_diff_GBP
+sales_summary_sd1<- sales_summary1$sd_diff_GBP
+sales_summary_mean_false1<- as.numeric(toString(sales_summary_GBP[1,3]))
+sales_summary_mean_true1<- as.numeric(toString(sales_summary_GBP[2,3]))
+sales_summary_sd_false1<-as.numeric(toString(sales_summary_GBP[1,4]))
+sales_summary_sd_true1<-as.numeric(toString(sales_summary_GBP[2,4]))
+```
+
+#### The Likelihood
+* Null hypothesis: All of the data come from one common distribution (black line)
+* Alternative hypothesis: The 'FALSE' (red line) data comes from a different population from 'TRUE' (blue line).
+```{r}
+colours <- scales::hue_pal()(2)
+histogram_GBP<-ggplot(salesdata)+geom_histogram(aes(x=sales_diff_GBP, y=..density..,fill=intrial), binwidth = 200000, alpha=0.3)+
+  stat_function(fun=function(x) {dnorm(x, mean=0, sd=sales_summary_sd1)})+
+  geom_vline(data=salesdata, mapping = aes(xintercept=0))+
+  stat_function(fun=function(x) {dnorm(x, mean=sales_summary_mean_false1, sd=sales_summary_sd_false1)}, col=colours[1])+
+  geom_vline(data=salesdata, mapping=aes(xintercept=sales_summary_mean_false1), col=colours[1])+
+  stat_function(fun=function(x) {dnorm(x, mean=sales_summary_mean_true1, sd=sales_summary_sd_true1)}, col=colours[2])+ 
+   geom_vline(data=salesdata, mapping=aes(xintercept=sales_summary_mean_true1), col=colours[2])+ labs(x="Sales Difference in GBP", y="Density", title="Sales Difference in GBP Prior and After Store Trial")
+histogram_GBP
+```
+From the above, we deduce that the data comes from two different population and there are two distributions. We reject the null-hypothesis. Thus, it is worth adding the extra complexity of assuming separate means and doing the trial.
+
+#### The Boxplot
+```{r}
+GBP_boxplot<-ggplot(data = salesdata, aes(x = intrial, y = sales_diff_GBP, fill=intrial)) +
+  geom_boxplot() +
+  labs(y = "Sales Difference in GBP", x = "Stores in Trial", title = "Sales Difference by Intrial in GBP")
+GBP_boxplot
+```
+
+
+#### The $t$ statistic
+We run $t$-tests to see if store intrial TRUE and FALSE have different average.
+The intuition for $t$
+
+$t$ will be big when:
+
+* The difference between the sample mean and our null hypothesis population mean is big
+* The standard error of the mean is small
+	* The standard deviation of the sample is small
+	* The sample size is large
+	
+##### $t$-test for Sales difference in GBP
+```{r}
+t.test(salesdata$sales_diff_GBP, data=salesdata)
+```
+From the above, we can deduce that there is a significant mean for retail sales of GBP 21,7191.40, $t(539) = 5.9624$, $p<.0001$.
+
+##### $t$-test for Sales difference in GBP & intrial
+This tells R to split Sales Difference in GBP by the store classification of being in trial or not. It then compare the two groups.
+```{r}
+t.test(sales_diff_GBP~intrial, data=salesdata)
+```
+NHST Approach: The mean retail sales in TRUE intrial is GBP 426,892.81. Whereas the mean retail sales in FALSE intrial is GBP18,088.69. Stores that did the redesign (intrial=TRUE) gain a significant GBP 408,804.12 sales more than stores that did not perform the redesign, Welch $t(483)=5.732$, $p<.0001$.
+
+### Model: Sales Difference in GBP by In Trial
+#### The NHSTesting Approach
+```{r}
+m1<-lm(sales_diff_GBP~intrial, data = salesdata)
+summary(m1)
+anova (m1)
+cbind(coef(m1), confint(m1))
+```
+For every extra store that perform the redesign there is an increase in sales difference by GBP 40,8804.00, 95% CI[269,755.00-547,853.20]. This increase is significant $t(538)=5.775$, $p<.0001$.
+
+#### The Estimation Approach
+```{r}
+(m1_emm<- emmeans(m1,~intrial))
+```
+#### Contrasts
+```{r}
+(m1_contrast<- confint(pairs(m1_emm)))
+```
+```{r}
+grid.arrange(
+  ggplot(summary(m1_emm), aes(x=intrial, y=emmean, ymin=lower.CL, ymax=upper.CL)) +
+    geom_point() + geom_linerange() +
+    labs(y="Sales Difference in GBP", x="Intrial", subtitle = "Error bars are 95% CIs", title="Sales Difference In GBP"),
+    ggplot(m1_contrast, aes(x=contrast, y=estimate, ymin=lower.CL, ymax=upper.CL)) +
+    geom_point() + geom_linerange() +
+  labs(y="Sales Difference in GBP", x="Intrial Contrast", subtitle = "Error bars are 95% CIs", title="Contrast in Sales Difference in GBP") +
+    geom_hline(yintercept=0, lty=2), ncol=2
+)
+```
+
+Estimation Approach: The mean sales difference for TRUE intrial is GBP 426,893, 95% CI[327304-526482]. The mean sales difference for FALSE intrial is GBP 18,089, 95% CI [-78951-115128]. This means that stores that did the redesign, had an increase of GBP 408,804, 95% CI [-547853--269755]. This increase is significant $t(538)=5.775$, $p<.0001$.
+
+---
+
+### Sales Difference in Percentage (%)
+#### Plotting The Histogram
+```{r}
+sales_summary<- salesdata %>% group_by(intrial) %>% summarise(frequency=n(),mean_diff_percentage=mean(sales_diff_percentage),sd_diff_percentage=sd(sales_diff_percentage))
+sales_summary
+```
+
+```{r}
+othistogram_p<-ggplot(salesdata, aes(x=sales_diff_percentage, fill=outlettype)) + geom_histogram(binwidth = 0.5, alpha=0.5) + labs(x="Sales Difference Between Sales 1 and Sales 2 in Percentage (%)", y="Frequency", fill="Outlet Type", title = "Sales Difference Prior and After Store Trial") + geom_vline(data = salesdata, mapping = aes(xintercept = mean(sales_diff_percentage)), col="purple")
+othistogram_p
+```
+
+```{r}
+ggplot(salesdata, aes(x=sales_diff_percentage, fill=intrial)) + geom_histogram(binwidth = 0.5) + labs(x="Sales Difference Between Sales 1 and Sales 2 in Percentage (%)", y="Frequency", fill="In Trial", title = "Sales Difference Prior and After Store Trial") + geom_vline(data = salesdata, mapping = aes(xintercept = mean(sales_diff_percentage)), col="purple")
+```
+
+```{r}
+sales_summary_1<- salesdata %>% summarise(mean_diff_percentage=mean(sales_diff_percentage),sd_diff_percentage=sd(sales_diff_percentage))
+sales_summary_1
+sales_summary_mean<- sales_summary_1$mean_diff_percentage
+sales_summary_sd<- sales_summary_1$sd_diff_percentage
+sales_summary_mean_false<- as.numeric(toString(sales_summary[1,3]))
+sales_summary_mean_true<- as.numeric(toString(sales_summary[2,3]))
+sales_summary_sd_false<-as.numeric(toString(sales_summary[1,4]))
+sales_summary_sd_true<-as.numeric(toString(sales_summary[2,4]))
+```
+#### The Likelihood 
+* Null hypothesis: All of the data come from one common distribution (black line)
+* Alternative hypothesis: The 'FALSE' (red line) data comes from a different population from 'TRUE' (blue line).
+
+```{r}
+colours <- scales::hue_pal()(2)
+histogram_percentage<-ggplot(salesdata)+geom_histogram(aes(x=sales_diff_percentage, y=..density..,fill=intrial), binwidth = 0.5, alpha=0.3)+
+  stat_function(fun=function(x) {dnorm(x, mean=0, sd=sales_summary_sd)})+
+  geom_vline(data=salesdata, mapping = aes(xintercept=0))+
+  stat_function(fun=function(x) {dnorm(x, mean=sales_summary_mean_false, sd=sales_summary_sd_false)}, col=colours[1])+
+  geom_vline(data=salesdata, mapping=aes(xintercept=sales_summary_mean_false), col=colours[1])+
+  stat_function(fun=function(x) {dnorm(x, mean=sales_summary_mean_true, sd=sales_summary_sd_true)}, col=colours[2])+ 
+   geom_vline(data=salesdata, mapping=aes(xintercept=sales_summary_mean_true), col=colours[2])+ labs(x="Sales Difference in Percentage", y="Density", title="Sales Difference in Percentage Prior and After Store Trial")
+histogram_percentage
+```
+
+
+From the above, we deduce that the data comes from two different population and there are two distributions. We reject the null-hypothesis. Thus, it is worth adding the extra complexity of assuming separate means and doing the trial.
+
+#### The Boxplot
+```{r}
+percentage_boxplot<-ggplot(data = salesdata, aes(x = intrial, y = sales_diff_percentage, fill=intrial)) +
+  geom_boxplot() +
+  labs(y = "Sales Difference in Percentage", x = "Stores in Trial", title = "Sales Difference by Intrial in Percentage (%)")
+percentage_boxplot
+```
+
+
+The variability is better explained in terms of percentage (%).
+#### The $t$ statistic
+We run $t$-tests to see if store intrial TRUE and FALSE have different average.
+The intuition for $t$
+
+$t$ will be big when:
+
+* The difference between the sample mean and our null hypothesis population mean is big
+* The standard error of the mean is small
+	* The standard deviation of the sample is small
+	* The sample size is large
+	
+#####$t$-test for Sales difference in percentage (%)
+```{r}
+t.test(salesdata$sales_diff_percentage, data=salesdata)
+```
+From the above, we can deduce that there is a significant mean increase for retail sales of 0.74%, $t(539) = 3.6614$, $p = 0.0002755$.
+
+##### $t$-test for Sales difference in percentage (%) & intrial
+This tells R to split Sales Difference in percentage by the store classification of being in trial or not. It then compare the two groups.
+
+```{r}
+t.test(sales_diff_percentage~intrial, data=salesdata)
+```
+NHST Approach: The mean retail sales in TRUE intrial is 1.42%. Whereas the mean retail sales in FALSE intrial is 0.10%. Stores that did the redesign (intrial=TRUE) gain a significant 1.32% sales more than stores that did not perform the redesign, Welch $t(487)=3.2472$, $p= 0.001246$.
+
+
+### Model: Sales Difference in Percentage by In Trial
+#### The NHSTesting Approach
+```{r}
+m2<-lm(sales_diff_percentage~intrial, data = salesdata)
+summary(m2)
+anova (m2)
+cbind(coef(m2), confint(m2))
+```
+Indeed 'intrial' is a significant predictor. 
+NHST approach: For every extra store that perform the redesign there is an increase in sales difference by 1.31%, 95% CI[0.52-2.10]. This increase is significant $t(538)=3.270$, $p=0.00114$.
+
+#### The Estimation Approach
+```{r}
+(m2_emm<- emmeans(m2,~intrial))
+```
+#### Contrasts
+```{r}
+(m2_contrast<- confint(pairs(m2_emm)))
+```
+Plotting both the CIs for the estimates for each group as well as the CI for the difference between groups.
+```{r}
+grid.arrange(
+  ggplot(summary(m2_emm), aes(x=intrial, y=emmean, ymin=lower.CL, ymax=upper.CL)) +
+    geom_point() + geom_linerange() +
+    labs(y="Sales Difference in Percentage (%)", x="Intrial", subtitle = "Error bars are 95% CIs", title="Sales Difference In Percentage (%)") + ylim(-3,3),
+    ggplot(m2_contrast, aes(x=contrast, y=estimate, ymin=lower.CL, ymax=upper.CL)) +
+    geom_point() + geom_linerange() +
+  labs(y="Sales Difference in GBP", x="Intrial Contrast", subtitle = "Error bars are 95% CIs", title="Contrast in Sales Difference in Percentage (%)") + ylim(-3,3) +
+    geom_hline(yintercept=0, lty=2), ncol=2
+)
+```
+
+
+Estimation Approach: The mean sales difference for TRUE intrial is 1.416%, 95% CI[0.850-1.981]. The mean sales difference for FALSE intrial is 0.102%, 95% CI [-0.449-0.653]. This means that stores that did the redesign, had an increase of 1.31%, 95% CI[-2.1--0.525]. This increase is significant $t(538)=3.270$, $p=0.00114$.
+
+#### Comparing the plots
+```{r}
+ggsave(ggarrange(histogram_GBP,histogram_percentage, nrow=2, common.legend=TRUE, legend="bottom"), file="compiled_histograms.png")
+ggsave(ggarrange(othistogram_GBP,othistogram_p, nrow=2, common.legend=TRUE, legend="bottom"),file="othistogram.png")
+```
+---
+
+
+
+## Question 2: Section 2
+
+
+### Model: Sales Difference in Percentage by In Trial and Outlet Type
+#### The NHSTesting Approach
+The term `intrial*outlettype` means `intrial + outlettype + `intrial:outlettype`
+The interaction term `intrial:outlettype` lets the effect of `outlettype` differ across `intrial` stores
+
+
+```{r}
+m3<-lm(sales_diff_percentage~intrial*outlettype, data = salesdata)
+summary(m3)
+anova (m3)
+#This call to anova() compares the models and tests whether the more complicated model with 'outlettype' fits significantly better
+anova(m2,m3)
+cbind(coef(m3), confint(m3))
+```
+
+NHST approach: Taking the effect of store trial into account, it can be seen that the categorical variable outlet types is significantly associated with the variation in sales difference in percentage between individual stores. 
+
+It can be seen that being from the community convenience store type is significantly associated with an average increase of sales by 3.95%, 95% CI[3.10-4.78] compared to the city centre convenience. This increase is significant $t(536)=9.202$, $p<0.001$.
+
+Similarly, being from the super store type is significantly associated with an average increase of sales by 4%, 95% CI[2.96,5.06] compared to the city centre convenience. This increase is significant $t(536)=7.492$, $p<0.001$.
+
+
+#### The Estimation Approach
+
+```{r}
+(m3_emm<- emmeans(m3,~intrial+outlettype))
+```
+#### Contrasts
+```{r}
+(m3_contrast<- confint(pairs(m3_emm)))
+```
+
+```{r}
+ot<-ggplot(summary(m3_emm), aes(x=outlettype, y=emmean, ymin=lower.CL, ymax=upper.CL, group=intrial)) + geom_point() + geom_linerange() + labs(x="Outlet Type", y="Difference in Sales (%)") + facet_grid(.~intrial) + geom_line()+ theme(axis.text=element_text(size = 5))
+ot
+
+ggsave(ot, file="ot.png")
+```
+
+
+The effect of types of store `outlettype` differ across stores `intrial` stores, $F(2, 534) = 57.912$, $p<.0001$. Looking at the stores that perform the redesigning (`intrialTRUE`), the community convenience and superstore are better-off after the trial. However, the sales difference in percentage drops for city centre convenience store after redesigning.
+
+On the other hand, it would seem that outlet type has no significant sales difference for the stores that did not sign up for the trial(`intrialFALSE`). This can also be represented  by the graph below:
+
+```{r}
+m3_summary<- summary(m3_emm)
+
+ggplot(m3_summary, aes(x=intrial, y=emmean, ymin=lower.CL, ymax=upper.CL, color=outlettype))+ geom_point()+ geom_linerange() + labs(y="Mean Value", x="In Trial", subtitle = "Model showing mean value with error 95% CIs", title= "Comparing Mean Value from Three Store Types")
+```
+
+Here we have constructed to a plot to highlight the importance of controlling for outlet type (`outlettype`). 
+```{r}
+both_models_emms <- bind_rows(list(data.frame(m2_emm, model="Univariate"), data.frame(m3_emm, model="Controlling for Outlet Type")))
+
+
+ggplot(both_models_emms, aes(x=intrial, y=emmean, ymin=lower.CL, ymax=upper.CL, color=model))+ geom_point()+ geom_linerange() + labs(y="Mean Value", x="In Trial", subtitle = "Model showing mean value with error 95% CIs", title= "Comparing Mean Value from from Two Models")
+```
+
+
+Adding outlet type to the model significantly improve the fit. Superimposing the plot of the models with and without the `outlettype' covariate show that the changes in the estimates of the sales differnce means in percentage (%) vary very little when 'outlettype' is held constant.
+
+
+Estimation Approach: if stores were redesign (TRUE intrial) there are different effects for different types of stores. The figure also shows that, community convenience stores and superstore stores that did the redesign shows a significant increase in sales difference in percentage of 3.66% 95% CI[3.00-4.32] and 3.73% 95% CI[2.69-4.78] respectively. Unfortunately, the same cannot be said for city centre convenience store which shows a significant decrease in sales difference in percentage by 4.47% 95% CI[-5.387--3.586].
+
+---
+
+### Model: Sales Difference in Percentage by In Trial and Outlet Type and Staff Turnover
+
+```{r}
+ggplot(salesdata, aes(x=sales_diff_percentage, y=staff_turnover))+geom_point() + facet_grid(~intrial)+ labs(y="The Proportion of Staff Left", x="Sales Difference in Percentage (%)", title="The Proportion of Staff Left against Sales Difference in Percentage(%)")
+```
+
+#### Correlation
+```{r}
+cor(select(salesdata, staff_turnover, sales_diff_percentage))
+```
+The correlation between Sales Difference in Percentage (%) and Staff Turnover is significant under NHST. This tells us the r-value is not zero, but we can see that it is still small: r=-0.0448. We should not have any problems with multicollinearity if we use them both as predictors in a multiple regression.
+
+#### The NHSTesting Approach
+```{r}
+m4<- lm(sales_diff_percentage~intrial*outlettype+staff_turnover, data=salesdata)
+summary(m4)
+anova(m4)
+```
+```{r}
+cbind(coef(m4), confint(m4))
+#Comparing the models when we decide to add 'staff_turnover' predictor
+anova(m3,m4)
+```
+The effect of adding staff turnover `staff_turnover` as a predictor does not improve the model, $F(1, 533) = 0.8591$, $p=0.3544123$.This can also be represented  by the graph below:
+
+#### The Estimation Approach
+```{r}
+(m4_emm<- emmeans(m4,~intrial+outlettype+staff_turnover))
+```
+
+#### Contrasts
+```{r}
+(m4_contrast<- confint(pairs(m4_emm)))
+```
+
+
+Here we have constructed to a plot to highlight the importance of adding Staff Turnover (`staff_turnover`) as a predictor: 
+```{r}
+both_models_emms <- bind_rows(list(data.frame(m3_emm, model="Controlling for Outlet Type"), data.frame(m4_emm, model="Controlling for Outlet Type and Staff Turnover Rate")))
+
+
+staff_turnover_graph<-ggplot(both_models_emms, aes(x=intrial, y=emmean, ymin=lower.CL, ymax=upper.CL, color=model))+ geom_point()+ geom_linerange() + labs(y="Mean Value", x="In Trial", subtitle = "Model showing mean value with error 95% CIs", title= "Comparing Mean Value from Two Models")
+staff_turnover_graph
+
+ggsave(staff_turnover_graph, file="staff_turnover.png") 
+```
+
+
+Adding staff turnover rate to the model does not improve the fit. Superimposing the plot of the models with and without the `staff_turnover` covariate show that there is not much of a change in the estimates of the sales difference means in percentage. Thus it is not worth adding `staff_turnover` as a predictor.
+
+---
